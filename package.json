@@ -1,0 +1,35 @@
+{
+  "name": "minecraft-mod-translator",
+  "version": "1.0.0",
+  "description": "Minecraft modlarını ve modpacklerini profesyonel şekilde Türkçe'ye çeviren kapsamlı araç",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "mc-translate": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "translate": "node src/cli.js translate",
+    "batch": "node src/cli.js batch"
+  },
+  "keywords": [
+    "minecraft",
+    "mod",
+    "translation",
+    "turkish",
+    "modpack",
+    "i18n",
+    "localization"
+  ],
+  "author": "Deokwave",
+  "copyright": "© 2024-2025 Deokwave - Tüm Hakları Saklıdır",
+  "license": "SEE LICENSE FILE",
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "ora": "^7.0.1",
+    "conf": "^12.0.0",
+    "p-limit": "^5.0.0"
+  }
+}

@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+# package-lock.json YÜKLENMELI (npm için gerekli)
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+dist/
+build/
+out/
+
+# Test
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Mod files (for testing)
+*.jar
+*.zip
+mods/
+translated/
+
+# Config
+config.json
+
+# Cache
+.cache/
