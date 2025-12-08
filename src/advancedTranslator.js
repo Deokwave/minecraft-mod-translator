@@ -141,7 +141,11 @@ export class AdvancedTranslator {
       // 4. ADIM: Format kodlarını geri koy
       result = this.restoreFormatting(result, preserved);
 
-      // 5. ADIM: Kalite kontrol
+      // 5. ADIM: Türkçe "ı" harfini temizle (Minecraft crash veriyor!)
+      // Google Translate bazen "iron" → "ıron" yapıyor
+      result = this.fixTurkishI(result);
+
+      // 6. ADIM: Kalite kontrol
       result = this.qualityCheck(result, text);
 
       // Cache'e kaydet
@@ -153,6 +157,19 @@ export class AdvancedTranslator {
       console.warn(`⚠️  Çeviri hatası: ${error.message}`);
       return text; // Hata durumunda orijinal metni dön
     }
+  }
+
+  /**
+   * Türkçe "ı" harfini "i" ile değiştir (Minecraft crash fix)
+   * Google Translate bazen "iron" → "ıron" çeviriyor
+   */
+  fixTurkishI(text) {
+    if (!text) return text;
+
+    // Küçük "ı" → "i" (Minecraft kodunda geçersiz)
+    // Büyük "I" → "I" (zaten geçerli, dokunma)
+    // SADECE kelime başında/ortasında "ı" varsa değiştir
+    return text.replace(/ı/g, 'i');
   }
 
   /**
@@ -611,14 +628,15 @@ export class AdvancedTranslator {
       'gauntlets': 'eldiven', 'gloves': 'eldiven', 'cape': 'pelerin', 'cloak': 'pelerin',
 
       // ==================== MALZEMELER - TEMEL ====================
-      'wood': 'tahta', 'log': 'kütük', 'plank': 'kereste', 'stick': 'çubuk',
+      // NOT: "ı" harfi Minecraft crash veriyor! fixTurkishI() fonksiyonu "ı" → "i" düzeltiyor
+      'wood': 'tahta', 'log': 'kütük', 'plank': 'tahta', 'stick': 'çubuk',
       'stone': 'taş', 'cobblestone': 'kaldırım taşı', 'bedrock': 'anakaya',
       'iron': 'demir', 'copper': 'bakır', 'gold': 'altın', 'diamond': 'elmas',
-      'netherite': 'netherite', 'emerald': 'zümrüt', 'quartz': 'kuvars',
+      'netherite': 'netherit', 'emerald': 'zümrüt', 'quartz': 'kuvars',
       'amethyst': 'ametist', 'coal': 'kömür', 'charcoal': 'odun kömürü',
-      'lapis': 'lapis', 'redstone': 'kırmızıtaş', 'glowstone': 'parıltıtaş',
+      'lapis': 'lapis', 'redstone': 'kırmızı taş', 'glowstone': 'parıltı taşı',
       'obsidian': 'obsidyen', 'crying obsidian': 'ağlayan obsidyen',
-      'echo shard': 'yankı kırığı', 'netherite scrap': 'netherite hurda',
+      'echo shard': 'yankı kırığı', 'netherite scrap': 'netherit hurda',
 
       // ==================== MALZEMELER - MOD MALZEMELERİ ====================
       'ore': 'maden', 'ingot': 'külçe', 'nugget': 'parça', 'dust': 'toz',

@@ -15,11 +15,19 @@ export class ModHandler {
   constructor() {
     this.supportedFormats = ['.jar', '.zip'];
     this.languagePaths = [
-      'assets/*/lang/',           // Standart mod konumu
-      'data/*/lang/',             // Bazı modlar data klasörü kullanır
-      'assets/*/localization/',   // Alternatif isim
-      'lang/',                    // Eski format
-      'resources/assets/*/lang/'  // Bazı modpacks
+      'assets/*/lang/',                      // Standart mod konumu
+      'data/*/lang/',                        // Bazı modlar data klasörü kullanır
+      'assets/*/localization/',              // Alternatif isim
+      'lang/',                               // Eski format
+      'resources/assets/*/lang/',            // Bazı modpacks
+      'data/*/patchouli_books/*/en_us/',     // Patchouli kitapları
+      'data/*/patchouli_books/*/en_us/entries/',     // Patchouli giriş sayfaları
+      'data/*/patchouli_books/*/en_us/categories/',  // Patchouli kategoriler
+      'data/*/quests/',                      // Quest modları
+      'assets/*/texts/',                     // Özel metin dosyaları
+      'assets/*/books/',                     // Kitap dosyaları
+      'data/*/advancements/',                // İlerlemeler
+      'data/*/recipes/',                     // Tarifler (açıklamalar için)
     ];
   }
 
@@ -157,45 +165,156 @@ export class ModHandler {
   }
 
   /**
-   * Dosyanın dil dosyası olup olmadığını kontrol et
+   * Dosyanın çevrilmesi gereken JSON dosyası olup olmadığını kontrol et
+   * EVRENSEL ÇÖZÜM: Tüm modlarda çalışır (Patchouli, Quest, JEI, vb.)
    */
   isLanguageFile(filePath) {
     if (!filePath.endsWith('.json')) return false;
 
     const normalized = filePath.toLowerCase();
 
-    // Lang klasörü içinde mi?
+    // ÇEVRİLMESİ GEREKEN DOSYALAR:
+    // 1. Lang klasörleri (standart)
     if (normalized.includes('/lang/') || normalized.includes('/localization/')) {
       return true;
+    }
+
+    // 2. Patchouli kitapları
+    if (normalized.includes('patchouli_books/') && normalized.includes('/en_us/')) {
+      return true;
+    }
+
+    // 3. Quest dosyaları
+    if (normalized.includes('/quests/') || normalized.includes('/questbook/')) {
+      return true;
+    }
+
+    // 4. Advancement dosyaları (ilerleme açıklamaları)
+    if (normalized.includes('/advancements/')) {
+      return true;
+    }
+
+    // 5. Özel kitap/metin dosyaları
+    if (normalized.includes('/books/') || normalized.includes('/texts/')) {
+      return true;
+    }
+
+    // 6. JEI açıklamaları
+    if (normalized.includes('/jei/') || normalized.includes('/descriptions/')) {
+      return true;
+    }
+
+    // ÇEVRİLMEMESİ GEREKEN DOSYALAR (hariç tut):
+    // - Tarifler (recipes) - sadece sayısal değerler
+    // - Loot tables - oyun mekaniği
+    // - Model/texture JSON'ları
+    const excludePaths = [
+      '/models/',
+      '/blockstates/',
+      '/loot_tables/',
+      '/structures/',
+      '/tags/',
+      '/dimension/',
+      '/worldgen/'
+    ];
+
+    for (const exclude of excludePaths) {
+      if (normalized.includes(exclude)) {
+        return false;
+      }
     }
 
     return false;
   }
 
   /**
-   * Moddan İngilizce dil dosyasını çıkar
+   * Moddan TÜM çevrilecek dosyaları çıkar (lang, Patchouli, quest, vb.)
+   * EVRENSEL ÇÖZÜM: Tüm modlarda çalışır
    */
   async extractEnglishLang(modPath) {
     const zip = new AdmZip(modPath);
     const zipEntries = zip.getEntries();
 
+    // TÜM çevrilecek JSON dosyalarını topla
+    const allTranslatableFiles = [];
+
     for (const entry of zipEntries) {
       if (this.isLanguageFile(entry.entryName)) {
-        const langCode = this.extractLanguageCode(entry.entryName);
-        if (langCode === 'en_us') {
-          return {
+        try {
+          const content = zip.readAsText(entry);
+
+          // JSON geçerliliğini kontrol et
+          JSON.parse(content);
+
+          allTranslatableFiles.push({
             path: entry.entryName,
-            content: zip.readAsText(entry)
-          };
+            content: content,
+            type: this.getFileType(entry.entryName)
+          });
+        } catch (e) {
+          // JSON parse hatası - atla
+          console.warn(`⚠️  JSON parse hatası (${entry.entryName}): ${e.message}`);
         }
       }
     }
 
-    throw new Error('en_us.json dosyası bulunamadı');
+    if (allTranslatableFiles.length === 0) {
+      throw new Error('Çevrilecek dosya bulunamadı');
+    }
+
+    // İlk dosyayı döndür (geriye uyumluluk için)
+    // Gerçek çeviri işleminde tüm dosyalar kullanılacak
+    return allTranslatableFiles[0];
   }
 
   /**
-   * Çevrilmiş dosyayı moda geri ekle
+   * Dosya tipini belirle (lang, patchouli, quest, vb.)
+   */
+  getFileType(filePath) {
+    const normalized = filePath.toLowerCase();
+
+    if (normalized.includes('/lang/')) return 'lang';
+    if (normalized.includes('patchouli_books/')) return 'patchouli';
+    if (normalized.includes('/quests/')) return 'quest';
+    if (normalized.includes('/advancements/')) return 'advancement';
+    if (normalized.includes('/jei/')) return 'jei';
+    if (normalized.includes('/books/')) return 'book';
+
+    return 'unknown';
+  }
+
+  /**
+   * Moddan TÜM çevrilecek dosyaları çıkar ve array olarak döndür
+   * EVRENSEL ÇÖZÜM: Patchouli, Quest, JEI, Lang - hepsi
+   */
+  async extractAllTranslatableFiles(modPath) {
+    const zip = new AdmZip(modPath);
+    const zipEntries = zip.getEntries();
+
+    const allFiles = [];
+
+    for (const entry of zipEntries) {
+      if (this.isLanguageFile(entry.entryName)) {
+        try {
+          const content = zip.readAsText(entry);
+          JSON.parse(content); // Geçerlilik kontrolü
+
+          allFiles.push({
+            path: entry.entryName,
+            content: content,
+            type: this.getFileType(entry.entryName)
+          });
+        } catch (e) {
+          // JSON hatalı - atla
+        }
+      }
+    }
+
+    return allFiles;
+  }
+
+  /**
+   * Çevrilmiş dosyayı moda geri ekle (ESKİ - geriye uyumluluk için)
    */
   async injectTranslation(modPath, translatedContent, outputPath) {
     try {
@@ -232,6 +351,50 @@ export class ModHandler {
         success: true,
         outputPath,
         translatedFilePath: trPath
+      };
+    } catch (error) {
+      throw new Error(`Çeviri enjekte hatası: ${error.message}`);
+    }
+  }
+
+  /**
+   * TÜM çevrilmiş dosyaları moda ekle (EVRENSEL ÇÖZÜM)
+   * Patchouli, Quest, JEI, Lang - hepsini ekler
+   */
+  async injectAllTranslations(modPath, translatedFiles, outputPath) {
+    try {
+      const zip = new AdmZip(modPath);
+
+      let addedCount = 0;
+
+      for (const file of translatedFiles) {
+        // Türkçe dosya yolu oluştur
+        let trPath = file.path;
+
+        // en_us.json → tr_tr.json
+        if (trPath.includes('en_us.json')) {
+          trPath = trPath.replace('en_us.json', 'tr_tr.json');
+        }
+        // /en_us/ klasörü → /tr_tr/ (Patchouli için)
+        else if (trPath.includes('/en_us/')) {
+          trPath = trPath.replace('/en_us/', '/tr_tr/');
+        }
+
+        // Varsa önce sil
+        zip.deleteFile(trPath);
+
+        // Yeni dosyayı ekle
+        zip.addFile(trPath, Buffer.from(file.content, 'utf8'));
+        addedCount++;
+      }
+
+      // Yeni JAR dosyasını kaydet
+      zip.writeZip(outputPath);
+
+      return {
+        success: true,
+        outputPath,
+        filesAdded: addedCount
       };
     } catch (error) {
       throw new Error(`Çeviri enjekte hatası: ${error.message}`);

@@ -11,7 +11,6 @@ import { setTimeout as delay } from 'timers/promises';
 
 export class GeminiTranslator {
   constructor(options = {}) {
-    this.apiKey = options.apiKey || process.env.GEMINI_API_KEY || '';
     this.model = options.model || 'gemini-1.5-flash'; // Ücretsiz ve hızlı
     this.stats = {
       total: 0,

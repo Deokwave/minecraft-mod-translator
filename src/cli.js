@@ -49,7 +49,7 @@ program
   .command('translate <modFile>')
   .description('Tek bir mod dosyasını çevirir')
   .option('-o, --output <path>', 'Çıktı dosya yolu (varsayılan: orijinal_dosya_tr.jar)')
-  .option('-m, --mode <mode>', 'Çeviri modu: gemini|ai|advanced|simple (varsayılan: gemini)', 'gemini')
+  .option('-m, --mode <mode>', 'Çeviri modu: advanced|gemini|ai (varsayılan: advanced)', 'advanced')
   .option('--api-key <key>', 'Claude API anahtarı (ortam değişkeninden okunur)')
   .option('--no-backup', 'Orijinal dosyayı yedekleme')
   .action(async (modFile, options) => {
@@ -174,7 +174,7 @@ program
   .command('batch <directory>')
   .description('Bir klasördeki tüm modları toplu olarak çevirir')
   .option('-o, --output <path>', 'Çıktı klasörü (varsayılan: ./translated)')
-  .option('-m, --mode <mode>', 'Çeviri modu: gemini|ai|advanced|simple (varsayılan: gemini)', 'gemini')
+  .option('-m, --mode <mode>', 'Çeviri modu: advanced|gemini|ai (varsayılan: advanced)', 'advanced')
   .option('-c, --concurrent <number>', 'Aynı anda çevrilecek mod sayısı (varsayılan: 3)', '3')
   .option('--api-key <key>', 'Claude API anahtarı')
   .option('--skip-existing', 'Zaten Türkçe olan modları atla')
@@ -230,8 +230,9 @@ program
         translator = new AdvancedTranslator({ useGoogle: true });
         console.log(chalk.green('✨ Gelişmiş çeviri modu (Sözlük + Google Translate)\n'));
       } else {
-        translator = new SimpleTranslator();
-        console.log(chalk.yellow('⚠️  Basit çeviri modu kullanılıyor (sınırlı kalite)\n'));
+        // Varsayılan: Advanced mod
+        translator = new AdvancedTranslator({ useGoogle: true });
+        console.log(chalk.green('✨ Gelişmiş çeviri modu (Sözlük + Google Translate)\n'));
       }
 
       // İstatistikler
@@ -253,26 +254,18 @@ program
           const currentSpinner = ora(`[${index + 1}/${modFiles.length}] ${modName}`).start();
 
           try {
-            // Mod analizi
-            const modInfo = await modHandler.analyzeMod(modFile);
+            // TÜM çevrilecek dosyaları bul (lang, Patchouli, quest, vb.)
+            const allFiles = await modHandler.extractAllTranslatableFiles(modFile);
 
-            // İngilizce dil dosyası var mı?
-            const enLang = modInfo.languageFiles.find(l => l.language === 'en_us');
-            if (!enLang) {
-              currentSpinner.warn(chalk.yellow(`${modName} - İngilizce dil dosyası yok`));
+            if (allFiles.length === 0) {
+              currentSpinner.warn(chalk.yellow(`${modName} - Çevrilecek dosya yok`));
               stats.skipped++;
               return;
             }
 
-            // JSON bozuk mu?
-            if (enLang.error) {
-              currentSpinner.warn(chalk.yellow(`${modName} - JSON bozuk/boş`));
-              stats.skipped++;
-              return;
-            }
-
-            // Türkçe zaten var mı?
+            // Türkçe zaten var mı? (sadece lang dosyası için kontrol)
             if (options.skipExisting) {
+              const modInfo = await modHandler.analyzeMod(modFile);
               const trLang = modInfo.languageFiles.find(l => l.language === 'tr_tr');
               if (trLang) {
                 currentSpinner.info(chalk.blue(`${modName} - Zaten Türkçe var`));
@@ -281,17 +274,37 @@ program
               }
             }
 
-            // Çeviri
-            const translatedContent = await translator.translateLanguageFile(
-              enLang.content,
-              { modName: modInfo.name }
-            );
+            // TÜM dosyaları çevir
+            const translatedFiles = [];
 
-            // Kaydet
+            for (const file of allFiles) {
+              try {
+                const translatedContent = await translator.translateLanguageFile(
+                  file.content,
+                  { modName: modName }
+                );
+
+                translatedFiles.push({
+                  path: file.path,
+                  content: translatedContent,
+                  type: file.type
+                });
+              } catch (err) {
+                console.warn(`⚠️  ${file.path} çevrilemedi: ${err.message}`);
+              }
+            }
+
+            if (translatedFiles.length === 0) {
+              currentSpinner.warn(chalk.yellow(`${modName} - Hiçbir dosya çevrilemedi`));
+              stats.failed++;
+              return;
+            }
+
+            // Kaydet (TÜM çevrilmiş dosyaları ekle)
             const outputPath = path.join(outputDir, modName);
-            await modHandler.injectTranslation(modFile, translatedContent, outputPath);
+            await modHandler.injectAllTranslations(modFile, translatedFiles, outputPath);
 
-            currentSpinner.succeed(chalk.green(`${modName} ✓`));
+            currentSpinner.succeed(chalk.green(`${modName} ✓ (${translatedFiles.length} dosya)`));
             stats.success++;
 
           } catch (error) {

@@ -9,8 +9,10 @@ Minecraft modlarınızı otomatik olarak Türkçe'ye çeviren güçlü bir araç
 ## ✨ Özellikler
 
 - ✅ **Eksiksiz Çeviri** - Hiçbir satır atlanmaz
+- ✅ **EVRENSEL DESTEK** - Patchouli kitapları, Quest modları, JEI açıklamaları, ve daha fazlası
 - ✅ **Format Koruması** - `%s`, `%d`, `%f` gibi tüm kodlar korunur
 - ✅ **Renk Koruması** - Minecraft renk kodları (`§a`, `§b`, `§c`) bozulmaz
+- ✅ **Crash Önleme** - Türkçe "ı" karakteri otomatik düzeltme (Minecraft uyumluluğu)
 - ✅ **Kaliteli Türkçe** - Doğal ve anlaşılır çeviriler
 - ✅ **Hızlı İşleme** - Paralel işleme ile aynı anda birden fazla mod
 - ✅ **Güvenli** - Orijinal dosyalar korunur
